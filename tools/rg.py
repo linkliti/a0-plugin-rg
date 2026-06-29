@@ -243,7 +243,7 @@ class Ripgrep(Tool):
         if hidden:
             rg_cmd.append("--hidden")
 
-        tree_cmd = ["tree", "--fromfile", "-F", "--noreport", "-L", str(max_depth)]
+        tree_cmd = ["tree", "-a", "--fromfile", "-F", "--noreport", "-L", str(max_depth)]
 
         try:
             rg_result = subprocess.run(
