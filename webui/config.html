@@ -1,0 +1,147 @@
+<html>
+  <head>
+    <title>Ripgrep Settings</title>
+  </head>
+
+  <body>
+    <div x-data>
+      <template x-if="config">
+        <div>
+          <div class="section-title">Ripgrep Search</div>
+          <div class="section-description">
+            Settings for the ripgrep (rg) search tool.
+          </div>
+
+          <div class="field">
+            <div class="field-label">
+              <div class="field-title">Max output lines</div>
+              <div class="field-description">
+                Maximum number of lines returned in search results.
+              </div>
+            </div>
+            <div class="field-control">
+              <input
+                type="number"
+                min="1"
+                x-model.number="config.max_output_lines"
+              />
+            </div>
+          </div>
+
+          <div class="field">
+            <div class="field-label">
+              <div class="field-title">Max line length</div>
+              <div class="field-description">
+                Maximum characters per line before truncation.
+              </div>
+            </div>
+            <div class="field-control">
+              <input
+                type="number"
+                min="1"
+                x-model.number="config.max_line_length"
+              />
+            </div>
+          </div>
+
+          <div class="field">
+            <div class="field-label">
+              <div class="field-title">Timeout (seconds)</div>
+              <div class="field-description">
+                Maximum time to wait for search/tree command to complete.
+              </div>
+            </div>
+            <div class="field-control">
+              <input type="number" min="1" x-model.number="config.timeout" />
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <div x-data="ignoreEditor()" x-init="load()">
+      <div>
+        <div class="section-title" style="margin-top: 1.5rem">
+          Ignore Patterns
+        </div>
+
+        <div class="field">
+          <div class="field-label">
+            <div class="field-title">.ignore file contents</div>
+            <div class="field-description">
+              Global ignore file used by rg and tree commands. One pattern per
+              line (gitignore syntax).
+            </div>
+          </div>
+          <div class="field-control">
+            <textarea rows="12" x-model="ignoreContent"></textarea>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-control">
+            <button
+              class="btn btn-primary"
+              :disabled="saving"
+              @click="save()"
+              x-text="saving ? 'Saving...' : 'Save .ignore'"
+            ></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Save .ignore separately without adding to a0 config
+      function ignoreEditor() {
+        return {
+          ignoreContent: "",
+          saving: false,
+          async load() {
+            try {
+              const resp = await fetch("/api/plugins/rg/ignore", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "read" }),
+              });
+              const data = await resp.json();
+              if (data.success) this.ignoreContent = data.content;
+            } catch (e) {
+              console.error("Failed to load .ignore:", e);
+            }
+          },
+          async save() {
+            this.saving = true;
+            this.saveMsg = "";
+            try {
+              const resp = await fetch("/api/plugins/rg/ignore", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  action: "write",
+                  content: this.ignoreContent,
+                }),
+              });
+              const data = await resp.json();
+              if (data.success) {
+                window.toastFrontendSuccess?.("Saved", "Ignore Patterns");
+              } else {
+                window.toastFrontendError?.(
+                  data.error || "Save failed",
+                  "Ignore Patterns",
+                );
+              }
+            } catch (e) {
+              window.toastFrontendError?.(
+                "Failed to save .ignore",
+                "Ignore Patterns",
+              );
+            } finally {
+              this.saving = false;
+            }
+          },
+        };
+      }
+    </script>
+  </body>
+</html>
